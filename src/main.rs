@@ -43,59 +43,77 @@ fn text_to_morse(input: String) -> Option<String> {
     println!("text -> morse code");
     let mut output = String::new();
     for c in input.chars() {
+        // the standard character for a space
         if c == ' ' {
             output.push_str("/ ");
             continue;
         }
-        let mut morse_code = " ".to_string();
+        
+        // can only handle supported letters
+        // error if unsupported
         let index = match LETTERS.find(c) {
             Some(s) => s,
             None => return None,
         };
+
         let letter_u8 = MORSE_CODE_VALUES[index];
+
+        // need to ignore the padding. padding ends after first 1
         let mut padding = true;
+        let mut morse_code = " ".to_string();
         for i in 1..=7 {
             let bit = (letter_u8>>i)&1 == 1;
             if padding {
+                // if we find the first 1 then the padding will end
                 padding = bit == false;
                 continue;
             }
+            // convert the actual data
             morse_code.push(if bit {'-'} else {'.'})
         }
+        // since bytes are backwards we need to reverse the string
         output.push_str(&morse_code.chars().rev().collect::<String>());
     }
     Some(output)
 }
 
 fn morse_to_text(input: String) -> Option<String> {
+    println!("morse code -> text");
     let mut output = String::new();
 
+    // gets each letter's morse code seperately
     let morse_chars: Vec<&str> = input.split(" ").collect();
     for character in morse_chars {
+
+        // standard space conversion
         if character == "/" {
             output.push(' ');
             continue;
         }
 
         let mut morse_code = 0b0000_0000;
-        for i in (0..=7).rev() {
-            if 7-i+1 > character.len() {
-                morse_code |= 1 << i;
-                break;
-            }
-            if character.chars().nth(7-i).unwrap() == '-' {
-                morse_code |= 1 << i;
+
+        // the bit used for padding
+        // converts the characters into morse code found in MORSE_CODE_VALUES
+        morse_code |= 1 << (7 - character.len());
+        for i in 0..character.len() {
+            if character.chars().nth(i).unwrap() == '-' {
+                morse_code |= 1 << (7-i);
             }
         }
-        println!("{:08b}", morse_code);
-        output.push(LETTERS.chars().nth(MORSE_CODE_VALUES.iter().position(|&r| r == morse_code).unwrap()).unwrap());
+        // find it, convert it, add it
+        let letter_index = MORSE_CODE_VALUES.iter().position(|&r| r == morse_code).unwrap();
+        let letter = LETTERS.chars().nth(letter_index).unwrap();
+        output.push(letter);
     }
 
     Some(output)
 }
 
 fn main() {
-    println!("enter the conversion type (morse/plain): ");
+    println!("morse: (plain text -> morse code)");
+    println!("plain: (morse code -> plain text)");
+    println!("enter the conversion type: ");
     let mut dest = String::new();
     std::io::stdin().read_line(&mut dest).unwrap();
     dest = dest.trim().to_lowercase();
